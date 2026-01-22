@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { BrainCircuit, Sparkles, Shield, ArrowRight, Github } from "lucide-react";
+import { DemoButton } from "@/components/auth/demo-button";
 
 export default function LandingPage() {
   return (
@@ -54,7 +55,7 @@ export default function LandingPage() {
                     <ArrowRight className="ml-2 transition-transform group-hover:translate-x-1" size={18} />
                   </Button>
                 </Link>
-               
+                <DemoButton />
               </div>
             </div>
           </div>
@@ -102,6 +103,7 @@ export default function LandingPage() {
                 <Link href="/signup">
                   <Button size="lg" className="rounded-full h-14 px-8 w-full md:w-auto">Create Free Account</Button>
                 </Link>
+                <DemoButton />
                 <div className="flex items-center justify-center md:justify-start gap-4 text-sm text-muted-foreground">
                   <div className="flex -space-x-2">
                     {[1,2,3,4].map(i => (
