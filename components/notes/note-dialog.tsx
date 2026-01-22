@@ -1,10 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -28,7 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-import { createNoteAction } from "@/app/actions/notes";
+import { createNoteAction, updateNoteAction } from "@/app/actions/notes";
 
 const noteFormSchema = z.object({
   title: z.string().min(1, {
@@ -39,14 +38,22 @@ const noteFormSchema = z.object({
   }),
 });
 
-interface CreateNoteDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface Note {
+  id: string;
+  title: string;
+  body: string;
+  source: string;
+  created_at: string;
 }
 
-export function CreateNoteDialog({ open, onOpenChange }: CreateNoteDialogProps) {
+interface NoteDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  note?: Note; // If provided, we are in "Edit" mode
+}
+
+export function NoteDialog({ open, onOpenChange, note }: NoteDialogProps) {
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   const form = useForm<z.infer<typeof noteFormSchema>>({
     resolver: zodResolver(noteFormSchema),
@@ -56,28 +63,54 @@ export function CreateNoteDialog({ open, onOpenChange }: CreateNoteDialogProps) 
     },
   });
 
+  // Reset form with note values when note changes or dialog opens
+  useEffect(() => {
+    if (note) {
+      form.reset({
+        title: note.title,
+        body: note.body,
+      });
+    } else {
+      form.reset({
+        title: "",
+        body: "",
+      });
+    }
+  }, [note, open, form]);
+
   async function onSubmit(values: z.infer<typeof noteFormSchema>) {
     setLoading(true);
     try {
-      await createNoteAction(values.title, values.body);
-
-      toast.success("Note created successfully!");
+      if (note) {
+        await updateNoteAction(note.id, values.title, values.body);
+        toast.success("Note updated successfully!");
+      } else {
+        await createNoteAction(values.title, values.body);
+        toast.success("Note created successfully!");
+      }
+      
       form.reset();
       onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || "Something went wrong");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
   }
 
+  const isEdit = !!note;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Create New Note</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">
+            {isEdit ? "Edit Note" : "Create New Note"}
+          </DialogTitle>
           <DialogDescription>
-            Add a new note to your collection. AI will automatically index it for smart searching.
+            {isEdit 
+              ? "Update your note. Changes will be re-indexed by AI."
+              : "Add a new note to your collection. AI will automatically index it for smart searching."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -129,10 +162,10 @@ export function CreateNoteDialog({ open, onOpenChange }: CreateNoteDialogProps) 
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
+                    {isEdit ? "Updating..." : "Saving..."}
                   </>
                 ) : (
-                  "Save Note"
+                  isEdit ? "Update Note" : "Save Note"
                 )}
               </Button>
             </DialogFooter>

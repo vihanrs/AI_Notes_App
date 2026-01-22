@@ -5,7 +5,9 @@ import { Plus, BrainCircuit, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NoteCard } from "@/components/notes/note-card";
-import { CreateNoteDialog } from "@/components/notes/create-note-dialog";
+import { NoteDialog } from "@/components/notes/note-dialog";
+import { ChatPanel } from "@/components/ai-elements/chat-panel";
+import { toast } from "sonner";
 
 interface Note {
   id: string;
@@ -20,9 +22,20 @@ interface NotesListProps {
 }
 
 export function NotesList({ initialNotes }: NotesListProps) {
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<Note | undefined>(undefined);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const handleOpenCreateDialog = () => {
+    setSelectedNote(undefined);
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (note: Note) => {
+    setSelectedNote(note);
+    setIsDialogOpen(true);
+  };
 
   // Filters notes based on the search query (title or body)
   const filteredNotes = initialNotes.filter((note) =>
@@ -43,7 +56,7 @@ export function NotesList({ initialNotes }: NotesListProps) {
         <div className="flex w-full md:w-auto gap-2">
           <Button 
             className="flex-1 md:flex-none gap-2 shadow-lg shadow-primary/20"
-            onClick={() => setIsCreateDialogOpen(true)}
+            onClick={handleOpenCreateDialog}
           >
             <Plus size={20} />
             Create Note
@@ -83,7 +96,7 @@ export function NotesList({ initialNotes }: NotesListProps) {
               : "You haven't created any notes yet. Start by creating your first note!"}
           </p>
           {!searchQuery && (
-            <Button onClick={() => setIsCreateDialogOpen(true)} variant="outline">
+            <Button onClick={handleOpenCreateDialog} variant="outline">
               Create First Note
             </Button>
           )}
@@ -91,18 +104,39 @@ export function NotesList({ initialNotes }: NotesListProps) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredNotes.map((note) => (
-            <NoteCard key={note.id} note={note} />
+            <NoteCard 
+              key={note.id} 
+              note={note} 
+              onClick={() => handleOpenEditDialog(note)}
+            />
           ))}
         </div>
       )}
 
       {/* DIALOGS & OVERLAYS */}
-      <CreateNoteDialog 
-        open={isCreateDialogOpen} 
-        onOpenChange={setIsCreateDialogOpen} 
+      <NoteDialog 
+        open={isDialogOpen} 
+        onOpenChange={setIsDialogOpen} 
+        note={selectedNote}
       />
 
-      {/* <ChatPanel open={isChatOpen} onClose={() => setIsChatOpen(false)} /> */}
+      <ChatPanel 
+        open={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+        onNoteLinkClick={(id) => {
+          const cleanId = id.trim();
+          const note = initialNotes.find(n => n.id === cleanId);
+          if (note) {
+            setIsChatOpen(false);
+            // Small timeout to let the panel slide away before opening dialog
+            setTimeout(() => {
+              handleOpenEditDialog(note);
+            }, 300);
+          } else {
+            toast.error("Referenced note not found in your collection.");
+          }
+        }}
+      />
     </div>
   );
 }

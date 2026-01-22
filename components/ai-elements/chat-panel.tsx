@@ -1,146 +1,183 @@
-// "use client";
+"use client";
 
-// import { useChat } from "@ai-sdk/react";
-// import { BrainCircuit, Send, X, User, Bot, Loader2, Sparkles } from "lucide-react";
-// import { Button } from "@/components/ui/button";
-// import { Input } from "@/components/ui/input";
-// import { ScrollArea } from "@/components/ui/scroll-area";
-// import { cn } from "@/lib/utils";
-// import { useEffect, useRef, useState } from "react";
-// import { toast } from "sonner";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { BrainCircuit, Search, Loader2, CheckCircle2, AlertCircle, FileText } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { ChatHeader, ChatInput, ChatMessage as ChatMessageUI } from "./chat-ui";
+import type { ChatMessage } from "@/app/api/chats/route";
 
-// interface ChatPanelProps {
-//   open: boolean;
-//   onClose: () => void;
-// }
+interface ChatPanelProps {
+  open: boolean;
+  onClose: () => void;
+  onNoteLinkClick?: (id: string) => void;
+}
 
-// export function ChatPanel({ open, onClose }: ChatPanelProps) {
-//   const [chatInput, setChatInput] = useState("");
-//   const { messages, append, isLoading, error } = useChat();
-//   const scrollRef = useRef<HTMLDivElement>(null);
+/**
+ * Extracts text content from a UIMessage by filtering and joining its text parts.
+ */
 
-//   useEffect(() => {
-//     if (scrollRef.current) {
-//       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-//     }
-//   }, [messages]);
+export function ChatPanel({ open, onClose, onNoteLinkClick }: ChatPanelProps) {
+  const [chatInput, setChatInput] = useState("");
+  // Now using the typed ChatMessage from our API route
+  const { messages, sendMessage, status, error } = useChat<ChatMessage>({
+    transport: new DefaultChatTransport({
+      api: "/api/chats",
+    }),
+  });
+  
+  // Derive isLoading from status for backward compatibility in the component
+  const isLoading = status === 'streaming' || status === 'submitted';
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-//   useEffect(() => {
-//     if (error) {
-//       toast.error(error.message || "Failed to connect to AI");
-//     }
-//   }, [error]);
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isLoading, open]);
 
-//   const handleFormSubmit = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (!chatInput.trim() || isLoading) return;
+  useEffect(() => {
+    if (error) {
+      toast.error(error.message || "Failed to connect to AI");
+    }
+  }, [error]);
 
-//     const message = chatInput;
-//     setChatInput(""); // Clear input immediately for better UX
-//     await append({ content: message, role: "user" });
-//   };
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isLoading) return;
 
-//   if (!open) return null;
+    const message = chatInput;
+    setChatInput(""); // Clear input immediately for better UX
+    
+    // In SDK v6, append is replaced by sendMessage with a different object structure
+    await sendMessage({ text: message });
+  };
 
-//   return (
-//     <div 
-//       className={cn(
-//         "fixed inset-y-0 right-0 w-full sm:w-[500px] bg-background border-l border-primary/10 shadow-2xl z-[60] flex flex-col transition-transform duration-300 ease-in-out",
-//         open ? "translate-x-0" : "translate-x-full"
-//       )}
-//     >
-//       {/* Header */}
-//       <div className="p-4 border-b border-primary/10 flex items-center justify-between bg-primary/5">
-//         <div className="flex items-center gap-2">
-//           <div className="bg-primary p-1.5 rounded-lg text-primary-foreground">
-//             <BrainCircuit size={20} />
-//           </div>
-//           <div>
-//             <h3 className="font-bold">AI Assistant</h3>
-//             <p className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase tracking-wider font-semibold">
-//               <Sparkles size={10} className="text-primary" />
-//               Powered by RAG
-//             </p>
-//           </div>
-//         </div>
-//         <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
-//           <X size={20} />
-//         </Button>
-//       </div>
+  return (
+    <div 
+      className={cn(
+        "fixed inset-y-0 right-0 w-full sm:w-[500px] bg-background border-l border-primary/10 shadow-2xl z-40 flex flex-col transition-transform duration-300 ease-in-out mt-14 sm:mt-0",
+        open ? "translate-x-0" : "translate-x-full"
+      )}
+    >
+      <ChatHeader onClose={onClose} />
 
-//       {/* Messages */}
-//       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-//         <div className="space-y-6 pb-4">
-//           {messages.length === 0 && (
-//             <div className="flex flex-col items-center justify-center h-[400px] text-center space-y-4">
-//               <div className="bg-primary/5 p-4 rounded-full">
-//                 <BrainCircuit size={48} className="text-primary/40" />
-//               </div>
-//               <div className="space-y-2">
-//                 <h4 className="font-semibold text-lg">How can I help you today?</h4>
-//                 <p className="text-sm text-muted-foreground max-w-[250px]">
-//                   Ask me anything about your notes. I can find specific info, summarize topics, or help you brainstorm.
-//                 </p>
-//               </div>
-//             </div>
-//           )}
+      {/* Messages */}
+      <div 
+        className="flex-1 overflow-y-auto p-6"
+      >
+        <div className="space-y-4 pb-4">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-[400px] text-center space-y-6 animate-in fade-in zoom-in duration-500">
+              <div className="bg-primary/5 p-6 rounded-3xl relative">
+                <BrainCircuit size={64} className="text-primary/30" />
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full animate-ping" />
+              </div>
+              <div className="space-y-2 px-6">
+                <h4 className="font-bold text-xl tracking-tight">AI Knowledge Base</h4>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  I can analyze your notes, summarize long texts, or find specific details using semantic search.
+                </p>
+              </div>
+              <div className="flex flex-wrap justify-center gap-2 px-6">
+                {["Summarize my notes", "Find project ideas", "Key takeaways"].map((tip) => (
+                  <button 
+                    key={tip}
+                    onClick={() => setChatInput(tip)}
+                    className="text-[10px] bg-muted hover:bg-primary/10 hover:text-primary transition-colors px-3 py-1.5 rounded-full font-bold uppercase tracking-wider border border-transparent hover:border-primary/20"
+                  >
+                    {tip}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-//           {messages.map((m) => (
-//             <div 
-//               key={m.id} 
-//               className={cn(
-//                 "flex gap-3 max-w-[90%]",
-//                 m.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
-//               )}
-//             >
-//               <div className={cn(
-//                 "w-8 h-8 rounded-full flex items-center justify-center shrink-0 border",
-//                 m.role === "user" ? "bg-muted" : "bg-primary/10 border-primary/20 text-primary"
-//               )}>
-//                 {m.role === "user" ? <User size={16} /> : <Bot size={16} />}
-//               </div>
-//               <div className={cn(
-//                 "p-3 rounded-2xl text-sm shadow-sm",
-//                 m.role === "user" 
-//                   ? "bg-primary text-primary-foreground rounded-tr-none" 
-//                   : "bg-muted/50 border border-primary/5 rounded-tl-none"
-//               )}>
-//                 {m.content}
-//               </div>
-//             </div>
-//           ))}
+          {messages.map((m, index) => (
+            <div key={m.id || index} className="space-y-4">
+              <ChatMessageUI 
+                role={m.role as "user" | "assistant"} 
+                content={m.parts
+                  .filter((p): p is { type: "text"; text: string } => p.type === "text")
+                  .map((p) => p.text)
+                  .join("\n")} 
+                isStreaming={isLoading && index === messages.length - 1 && m.role === "assistant"}
+                onNoteClick={onNoteLinkClick}
+              />
+              
+              {/* Tool Calls for this message using switch/case pattern from learnings */}
+              {m.parts.map((part, pIndex) => {
+                switch (part.type) {
+                  case 'tool-search_notes':
+                    switch (part.state) {
+                      case 'input-streaming':
+                      case 'input-available':
+                        return (
+                          <div 
+                            key={`tool-${m.id}-${pIndex}`}
+                            className="ml-12 mb-4 p-3 rounded-2xl border bg-primary/5 border-primary/10 shadow-inner flex items-center gap-3 animate-in fade-in slide-in-from-left-2"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-primary/10 border-primary/20 text-primary flex items-center justify-center shrink-0 border">
+                              {part.state === 'input-streaming' ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} className="animate-pulse" />}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70">Semantic Search</span>
+                              <span className="text-xs italic truncate">
+                                {part.state === 'input-streaming' ? 'Planning search...' : `Searching for: "${part.input.query}"`}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      case 'output-available':
+                        // Hide search results to keep chat clean as per user request
+                        return null;
+                      case 'output-error':
+                        return (
+                          <div key={`tool-${m.id}-${pIndex}`} className="ml-12 mb-4 p-3 rounded-2xl border bg-destructive/5 border-destructive/10 flex items-center gap-3">
+                             <AlertCircle size={14} className="text-destructive" />
+                             <span className="text-xs text-destructive font-medium italic">Search failed: {part.errorText}</span>
+                          </div>
+                        );
+                      default:
+                        return null;
+                    }
+                  default:
+                    return null;
+                }
+              })}
+            </div>
+          ))}
 
-//           {isLoading && (
-//             <div className="flex gap-3 mr-auto">
-//               <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-primary/10 border border-primary/20 text-primary">
-//                 <Bot size={16} />
-//               </div>
-//               <div className="p-3 rounded-2xl rounded-tl-none bg-muted/50 border border-primary/5">
-//                 <Loader2 size={16} className="animate-spin text-primary" />
-//               </div>
-//             </div>
-//           )}
-//         </div>
-//       </ScrollArea>
+          {/* Fallback Tool usage indicator for active streaming */}
+          {isLoading && messages[messages.length - 1]?.role === "user" && (
+            <div className="flex items-center gap-3 text-muted-foreground animate-pulse ml-12">
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 border border-border">
+                <BrainCircuit size={14} className="animate-spin" />
+              </div>
+              <span className="text-xs font-medium italic">Processing request...</span>
+            </div>
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
 
-//       {/* Input */}
-//       <div className="p-4 border-t border-primary/10 bg-background">
-//         <form onSubmit={handleFormSubmit} className="flex gap-2">
-//           <Input 
-//             placeholder="Ask your notes..." 
-//             className="flex-1 bg-muted/30 focus-visible:ring-primary/50"
-//             value={chatInput}
-//             onChange={(e) => setChatInput(e.target.value)}
-//             disabled={isLoading}
-//           />
-//           <Button type="submit" size="icon" disabled={isLoading || !chatInput.trim()} className="rounded-full shadow-lg shadow-primary/20">
-//             {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-//           </Button>
-//         </form>
-//         <p className="text-[10px] text-center mt-3 text-muted-foreground uppercase tracking-widest font-semibold opacity-50">
-//           SmartNotes AI Assistant
-//         </p>
-//       </div>
-//     </div>
-//   );
-// }
+      {/* Input Section */}
+      <div className="p-4 border-t border-primary/10 bg-background/50 backdrop-blur-sm">
+        <ChatInput 
+          value={chatInput}
+          onChange={setChatInput}
+          onSubmit={handleFormSubmit}
+          isLoading={isLoading}
+        />
+        <p className="text-[9px] text-center mt-3 text-muted-foreground uppercase tracking-[0.2em] font-black opacity-30 select-none">
+          Secure Neural Processing
+        </p>
+      </div>
+    </div>
+  );
+}

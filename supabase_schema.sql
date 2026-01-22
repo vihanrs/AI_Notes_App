@@ -103,41 +103,41 @@ CREATE POLICY "Users can delete their own embeddings"
 --   USING (auth.uid() = user_id);
 
 -- Function to search notes by semantic similarity
--- CREATE OR REPLACE FUNCTION search_notes(
---   query_embedding VECTOR(1536),
---   match_threshold FLOAT,
---   match_count INT,
---   filter_user_id UUID
--- )
--- RETURNS TABLE (
---   note_id UUID,
---   title TEXT,
---   body TEXT,
---   source TEXT,
---   chunk_content TEXT,
---   similarity FLOAT,
---   created_at TIMESTAMPTZ
--- )
--- LANGUAGE plpgsql
--- AS $$
--- BEGIN
---   RETURN QUERY
---   SELECT DISTINCT ON (n.id)
---     n.id AS note_id,
---     n.title,
---     n.body,
---     n.source,
---     ne.content AS chunk_content,
---     1 - (ne.embedding <=> query_embedding) AS similarity,
---     n.created_at
---   FROM note_embeddings ne
---   JOIN notes n ON ne.note_id = n.id
---   WHERE ne.user_id = filter_user_id
---     AND 1 - (ne.embedding <=> query_embedding) > match_threshold
---   ORDER BY n.id, similarity DESC
---   LIMIT match_count;
--- END;
--- $$;
+CREATE OR REPLACE FUNCTION search_notes(
+  query_embedding VECTOR(1536),
+  match_threshold FLOAT,
+  match_count INT,
+  filter_user_id UUID
+)
+RETURNS TABLE (
+  note_id UUID,
+  title TEXT,
+  body TEXT,
+  source TEXT,
+  chunk_content TEXT,
+  similarity FLOAT,
+  created_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT DISTINCT ON (n.id)
+    n.id AS note_id,
+    n.title,
+    n.body,
+    n.source,
+    ne.content AS chunk_content,
+    1 - (ne.embedding <=> query_embedding) AS similarity,
+    n.created_at
+  FROM note_embeddings ne
+  JOIN notes n ON ne.note_id = n.id
+  WHERE ne.user_id = filter_user_id
+    AND 1 - (ne.embedding <=> query_embedding) > match_threshold
+  ORDER BY n.id, similarity DESC
+  LIMIT match_count;
+END;
+$$;
 
 -- Step 1: Create a function that sets updated_at to NOW()
 CREATE OR REPLACE FUNCTION update_updated_at_column()

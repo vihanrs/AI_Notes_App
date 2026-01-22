@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { LogOut, StickyNote, BrainCircuit } from "lucide-react";
+import { LogOut, BrainCircuit } from "lucide-react";
 import { toast } from "sonner";
 
 export function Navbar() {
