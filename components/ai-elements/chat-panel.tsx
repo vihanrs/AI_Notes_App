@@ -83,17 +83,7 @@ export function ChatPanel({ open, onClose, onNoteLinkClick }: ChatPanelProps) {
                   I can analyze your notes, summarize long texts, or find specific details using semantic search.
                 </p>
               </div>
-              <div className="flex flex-wrap justify-center gap-2 px-6">
-                {["Summarize my notes", "Find project ideas", "Key takeaways"].map((tip) => (
-                  <button 
-                    key={tip}
-                    onClick={() => setChatInput(tip)}
-                    className="text-[10px] bg-muted hover:bg-primary/10 hover:text-primary transition-colors px-3 py-1.5 rounded-full font-bold uppercase tracking-wider border border-transparent hover:border-primary/20"
-                  >
-                    {tip}
-                  </button>
-                ))}
-              </div>
+
             </div>
           )}
 
