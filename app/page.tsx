@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { BrainCircuit, Sparkles, Shield, ArrowRight, Github } from "lucide-react";
-import { DemoButton } from "@/components/auth/demo-button";
+import { DemoButton } from "@/components/demo-button";
 
 export default function LandingPage() {
   return (

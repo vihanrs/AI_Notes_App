@@ -1,63 +1,45 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { db, notes, noteEmbeddings } from "@/lib/db";
+import { eq, and } from "drizzle-orm";
 import { generateEmbeddings } from "@/lib/embeddings";
 import { revalidatePath } from "next/cache";
 
 export async function createNoteAction(title: string, body: string) {
-    const supabase = await createClient();
+    const user = await getAuthenticatedUser();
+    const embeddings = await generateNoteEmbeddings(title, body);
 
-    // Get authenticated user
-    const {
-        data: { user },
-        error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-        throw new Error("Unauthorized");
-    }
-
-    // Insert the note into the 'notes' table
-    const { data: note, error: noteError } = await supabase
-        .from("notes")
-        .insert({
-            title,
-            body,
-            user_id: user.id,
-            source: "local",
-        })
-        .select()
-        .single();
-
-    if (noteError) {
-        throw new Error(noteError.message);
-    }
-
+    // Use transaction to insert note and embeddings together
+    let note;
     try {
-        // Generate AI embeddings for the note content
-        // We combine title and body for better context
-        const textToEmbed = `${title}\n\n${body}`;
-        const embeddings = await generateEmbeddings(textToEmbed);
+        note = await db.transaction(async (tx) => {
+            // Insert the note
+            const [createdNote] = await tx
+                .insert(notes)
+                .values({
+                    title,
+                    body,
+                    userId: user.id,
+                    source: "local",
+                })
+                .returning();
 
-        // Insert the embeddings into the 'note_embeddings' table
-        const embeddingRecords = embeddings.map((emb) => ({
-            content: emb.content,
-            embedding: emb.embedding,
-            note_id: note.id,
-            user_id: user.id,
-        }));
+            // Insert the embeddings
+            const embeddingRecords = embeddings.map((emb) => ({
+                content: emb.content,
+                embedding: emb.embedding,
+                noteId: createdNote.id,
+                userId: user.id,
+            }));
 
-        const { error: embeddingError } = await supabase
-            .from("note_embeddings")
-            .insert(embeddingRecords);
+            await tx.insert(noteEmbeddings).values(embeddingRecords);
 
-        if (embeddingError) {
-            console.error("Error inserting embeddings:", embeddingError);
-            // We could delete the note here if embeddings are critical
-            await supabase.from('notes').delete().eq('id', note.id);
-        }
+            return createdNote;
+        });
     } catch (error) {
-        console.error("Failed to generate AI embeddings:", error);
-        // We don't throw here so the note is still saved even if AI fails
+        console.error("Failed to create note:", error);
+        throw new Error("Failed to create note");
     }
 
     // Revalidate the notes page so it shows the new data instantly
@@ -67,26 +49,17 @@ export async function createNoteAction(title: string, body: string) {
 }
 
 export async function deleteNoteAction(noteId: string) {
-    const supabase = await createClient();
+    const user = await getAuthenticatedUser();
 
-    // Get authenticated user
-    const {
-        data: { user },
-        error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-        throw new Error("Unauthorized");
-    }
-
-    // Delete the note (embeddings will be deleted automatically due to CASCADE in DB)
-    const { error } = await supabase
-        .from("notes")
-        .delete()
-        .eq("id", noteId)
-        .eq("user_id", user.id); // Ensure user can only delete their own notes
-
-    if (error) {
-        throw new Error(error.message);
+    // Note: Embeddings are deleted automatically via CASCADE constraint in the DB schema
+    // (note_embeddings.note_id references notes.id with ON DELETE CASCADE)
+    try {
+        await db
+            .delete(notes)
+            .where(and(eq(notes.id, noteId), eq(notes.userId, user.id)));
+    } catch (error) {
+        console.error("Failed to delete note:", error);
+        throw new Error("Failed to delete note");
     }
 
     // Revalidate the page
@@ -96,50 +69,64 @@ export async function deleteNoteAction(noteId: string) {
 }
 
 export async function updateNoteAction(noteId: string, title: string, body: string) {
-    const supabase = await createClient();
+    const user = await getAuthenticatedUser();
+    const embeddings = await generateNoteEmbeddings(title, body);
 
-    // Get authenticated user
-    const {
-        data: { user },
-        error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-        throw new Error("Unauthorized");
-    }
-
-    // Update the note
-    const { error: noteError } = await supabase
-        .from("notes")
-        .update({ title, body, updated_at: new Date().toISOString() })
-        .eq("id", noteId)
-        .eq("user_id", user.id);
-
-    if (noteError) {
-        throw new Error(noteError.message);
-    }
-
+    // Use transaction to update note and embeddings together
     try {
-        // Delete old embeddings
-        await supabase.from("note_embeddings").delete().eq("note_id", noteId);
+        await db.transaction(async (tx) => {
+            // Update the note
+            await tx
+                .update(notes)
+                .set({ title, body, updatedAt: new Date() })
+                .where(and(eq(notes.id, noteId), eq(notes.userId, user.id)));
 
-        // Generate new embeddings
-        const textToEmbed = `${title}\n\n${body}`;
-        const embeddings = await generateEmbeddings(textToEmbed);
+            // Delete old embeddings
+            await tx.delete(noteEmbeddings).where(eq(noteEmbeddings.noteId, noteId));
 
-        const embeddingRecords = embeddings.map((emb) => ({
-            content: emb.content,
-            embedding: emb.embedding,
-            note_id: noteId,
-            user_id: user.id,
-        }));
+            // Insert new embeddings
+            const embeddingRecords = embeddings.map((emb) => ({
+                content: emb.content,
+                embedding: emb.embedding,
+                noteId: noteId,
+                userId: user.id,
+            }));
 
-        await supabase.from("note_embeddings").insert(embeddingRecords);
+            await tx.insert(noteEmbeddings).values(embeddingRecords);
+        });
     } catch (error) {
-        console.error("Failed to update AI embeddings:", error);
+        console.error("Failed to update note:", error);
+        throw new Error("Failed to update note");
     }
 
     // Revalidate the page
     revalidatePath("/notes");
 
     return { success: true };
+}
+
+// Helper to get authenticated user or throw
+async function getAuthenticatedUser() {
+    const supabase = await createClient();
+    const {
+        data: { user },
+        error,
+    } = await supabase.auth.getUser();
+
+    if (error || !user) {
+        throw new Error("Unauthorized");
+    }
+
+    return user;
+}
+
+// Helper to generate embeddings for note content
+async function generateNoteEmbeddings(title: string, body: string) {
+    const textToEmbed = `${title}\n\n${body}`;
+    try {
+        return await generateEmbeddings(textToEmbed);
+    } catch (error) {
+        console.error("Failed to generate AI embeddings:", error);
+        throw new Error("Failed to generate embeddings for note");
+    }
 }

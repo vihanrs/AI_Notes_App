@@ -35,16 +35,6 @@ export default function SignInPage() {
     setLoading(false)
   }
 
-  async function handleOAuthSignIn(provider: 'google' | 'github') {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${location.origin}/auth/callback`,
-      },
-    })
-    if (error) toast.error(error.message)
-  }
-
   return (
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg backdrop-blur-sm bg-background/80 border-primary/10">

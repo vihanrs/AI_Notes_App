@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 import { createNoteAction, updateNoteAction } from "@/app/actions/notes";
+import { Note } from "@/lib/db";
 
 const noteFormSchema = z.object({
   title: z.string().min(1, {
@@ -37,14 +38,6 @@ const noteFormSchema = z.object({
     message: "Body cannot be empty.",
   }),
 });
-
-interface Note {
-  id: string;
-  title: string;
-  body: string;
-  source: string;
-  created_at: string;
-}
 
 interface NoteDialogProps {
   open: boolean;

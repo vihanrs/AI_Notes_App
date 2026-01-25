@@ -21,8 +21,12 @@ export function DemoButton() {
         router.push("/notes");
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.message || "Demo login failed");
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message || "Demo login failed");
+      } else {
+        toast.error("Demo login failed");
+      }
     } finally {
       setIsLoading(false);
     }

@@ -8,14 +8,7 @@ import { NoteCard } from "@/components/notes/note-card";
 import { NoteDialog } from "@/components/notes/note-dialog";
 import { ChatPanel } from "@/components/ai-elements/chat-panel";
 import { toast } from "sonner";
-
-interface Note {
-  id: string;
-  title: string;
-  body: string;
-  source: string;
-  created_at: string;
-}
+import { Note } from "@/lib/db";
 
 interface NotesListProps {
   initialNotes: Note[];

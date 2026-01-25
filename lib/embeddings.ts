@@ -4,16 +4,6 @@ import { embed, embedMany } from 'ai'
 const embeddingModel = openai.embedding('text-embedding-3-small')
 
 /**
- * Chunk text by splitting on double newlines (paragraphs)
- */
-function generateChunks(input: string): string[] {
-    return input
-        .split('\n\n')
-        .map((chunk) => chunk.trim())
-        .filter(Boolean)
-}
-
-/**
  * Generate embeddings for a single text value
  */
 export async function generateEmbedding(value: string): Promise<number[]> {
@@ -27,7 +17,7 @@ export async function generateEmbedding(value: string): Promise<number[]> {
 /**
  * Generate embeddings for a text by chunking and embedding each chunk
  */
-export async function generateEmbeddings(value: string) {
+export async function generateEmbeddings(value: string): Promise<{ content: string; embedding: number[] }[]> {
     const chunks = generateChunks(value)
 
     const { embeddings } = await embedMany({
@@ -39,4 +29,14 @@ export async function generateEmbeddings(value: string) {
         content: chunks[index],
         embedding,
     }))
+}
+
+/**
+ * Chunk text by splitting on double newlines (paragraphs)
+ */
+function generateChunks(input: string): string[] {
+    return input
+        .split('\n\n')
+        .map((chunk) => chunk.trim())
+        .filter(Boolean)
 }

@@ -7,6 +7,7 @@ import { deleteNoteAction } from "@/app/actions/notes";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Note } from "@/lib/db";
 
 import {
   AlertDialog,
@@ -19,14 +20,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-interface Note {
-  id: string;
-  title: string;
-  body: string;
-  source: string;
-  created_at: string;
-}
 
 interface NoteCardProps {
   note: Note;
@@ -107,7 +100,7 @@ export function NoteCard({ note, onClick }: NoteCardProps) {
       <CardFooter className="pt-2 flex items-center justify-between border-t border-primary/5">
         <div className="flex items-center text-[10px] uppercase font-semibold tracking-wider text-muted-foreground">
           <Clock size={12} className="mr-1" />
-          {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
+          {note.createdAt ? formatDistanceToNow(note.createdAt, { addSuffix: true }) : "Just now"}
         </div>
         {note.source !== 'local' && (
           <div className="flex items-center text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-medium">
