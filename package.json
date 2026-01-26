@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "xmcp dev & next dev",
-    "build": "next build && xmcp build",
+    "build": "(xmcp build || true) && next build && xmcp build",
     "start": "next start",
     "lint": "eslint"
   },
