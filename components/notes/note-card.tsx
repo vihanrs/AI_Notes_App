@@ -3,9 +3,7 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { Trash2, Loader2, Clock } from "lucide-react";
-import { deleteNoteAction } from "@/app/actions/notes";
 import { useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Note } from "@/lib/db";
 
@@ -24,20 +22,16 @@ import {
 interface NoteCardProps {
   note: Note;
   onClick?: () => void;
+  onDelete?: (noteId: string) => void;
+  isDeleting?: boolean;
 }
 
-export function NoteCard({ note, onClick }: NoteCardProps) {
-  const [isDeleting, setIsDeleting] = useState(false);
+export function NoteCard({ note, onClick, onDelete, isDeleting = false }: NoteCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  async function handleDelete() {
-    setIsDeleting(true);
-    try {
-      await deleteNoteAction(note.id);
-      toast.success("Note deleted");
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
-      setIsDeleting(false);
+  function handleDelete() {
+    if (onDelete) {
+      onDelete(note.id);
       setShowDeleteDialog(false);
     }
   }

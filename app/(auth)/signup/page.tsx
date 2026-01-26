@@ -30,7 +30,11 @@ export default function SignUpPage() {
     })
 
     if (error) {
-      toast.error(error.message)
+      // Map Supabase errors to user-friendly messages
+      const errorMessage = error.message.toLowerCase().includes('phone')
+        ? 'Please enter a valid email address'
+        : error.message;
+      toast.error(errorMessage)
     } else {
       toast.success('Check your email to confirm your account!')
       router.push('/signin')

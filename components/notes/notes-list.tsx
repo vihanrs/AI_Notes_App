@@ -9,6 +9,7 @@ import { NoteDialog } from "@/components/notes/note-dialog";
 import { ChatPanel } from "@/components/ai-elements/chat-panel";
 import { toast } from "sonner";
 import { Note } from "@/lib/db";
+import { useNotes } from "@/hooks/use-notes";
 
 interface NotesListProps {
   initialNotes: Note[];
@@ -19,6 +20,9 @@ export function NotesList({ initialNotes }: NotesListProps) {
   const [selectedNote, setSelectedNote] = useState<Note | undefined>(undefined);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // React Query hook for optimistic updates
+  const { notes, createNote, updateNote, deleteNote, isCreating, isUpdating, isDeleting } = useNotes(initialNotes);
 
   const handleOpenCreateDialog = () => {
     setSelectedNote(undefined);
@@ -31,7 +35,8 @@ export function NotesList({ initialNotes }: NotesListProps) {
   };
 
   // Filters notes based on the search query (title or body)
-  const filteredNotes = initialNotes.filter((note) =>
+  // Now uses `notes` from React Query cache instead of `initialNotes`
+  const filteredNotes = notes.filter((note) =>
     note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     note.body.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -97,28 +102,37 @@ export function NotesList({ initialNotes }: NotesListProps) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredNotes.map((note) => (
-            <NoteCard 
-              key={note.id} 
-              note={note} 
+            <NoteCard
+              key={note.id}
+              note={note}
               onClick={() => handleOpenEditDialog(note)}
+              onDelete={(noteId) => deleteNote({ noteId })}
+              isDeleting={isDeleting}
             />
           ))}
         </div>
       )}
 
       {/* DIALOGS & OVERLAYS */}
-      <NoteDialog 
-        open={isDialogOpen} 
-        onOpenChange={setIsDialogOpen} 
+      <NoteDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
         note={selectedNote}
+        onCreateNote={createNote}
+        onUpdateNote={updateNote}
+        onDeleteNote={deleteNote}
+        isCreating={isCreating}
+        isUpdating={isUpdating}
+        isDeleting={isDeleting}
       />
 
-      <ChatPanel 
-        open={isChatOpen} 
-        onClose={() => setIsChatOpen(false)} 
+      <ChatPanel
+        open={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
         onNoteLinkClick={(id) => {
           const cleanId = id.trim();
-          const note = initialNotes.find(n => n.id === cleanId);
+          // Use `notes` from React Query cache instead of `initialNotes`
+          const note = notes.find(n => n.id === cleanId);
           if (note) {
             setIsChatOpen(false);
             // Small timeout to let the panel slide away before opening dialog

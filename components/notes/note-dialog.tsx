@@ -4,8 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +16,16 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
     Form,
     FormControl,
     FormField,
@@ -27,7 +36,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-import { createNoteAction, updateNoteAction } from "@/app/actions/notes";
 import { Note } from "@/lib/db";
 
 const noteFormSchema = z.object({
@@ -43,10 +51,27 @@ interface NoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   note?: Note; // If provided, we are in "Edit" mode
+  // React Query mutation functions (passed from parent)
+  onCreateNote: (data: { title: string; body: string }) => void;
+  onUpdateNote: (data: { noteId: string; title: string; body: string }) => void;
+  onDeleteNote: (data: { noteId: string }) => void;
+  isCreating: boolean;
+  isUpdating: boolean;
+  isDeleting: boolean;
 }
 
-export function NoteDialog({ open, onOpenChange, note }: NoteDialogProps) {
-  const [loading, setLoading] = useState(false);
+export function NoteDialog({
+  open,
+  onOpenChange,
+  note,
+  onCreateNote,
+  onUpdateNote,
+  onDeleteNote,
+  isCreating,
+  isUpdating,
+  isDeleting,
+}: NoteDialogProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const form = useForm<z.infer<typeof noteFormSchema>>({
     resolver: zodResolver(noteFormSchema),
@@ -71,23 +96,26 @@ export function NoteDialog({ open, onOpenChange, note }: NoteDialogProps) {
     }
   }, [note, open, form]);
 
-  async function onSubmit(values: z.infer<typeof noteFormSchema>) {
-    setLoading(true);
-    try {
-      if (note) {
-        await updateNoteAction(note.id, values.title, values.body);
-        toast.success("Note updated successfully!");
-      } else {
-        await createNoteAction(values.title, values.body);
-        toast.success("Note created successfully!");
-      }
-      
-      form.reset();
+  // Combined loading state from mutations
+  const loading = isCreating || isUpdating || isDeleting;
+
+  function onSubmit(values: z.infer<typeof noteFormSchema>) {
+    if (note) {
+      // Update existing note using React Query mutation
+      onUpdateNote({ noteId: note.id, title: values.title, body: values.body });
+    } else {
+      // Create new note using React Query mutation
+      onCreateNote({ title: values.title, body: values.body });
+    }
+
+    form.reset();
+    onOpenChange(false);
+  }
+
+  function handleDelete() {
+    if (note) {
+      onDeleteNote({ noteId: note.id });
       onOpenChange(false);
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -142,25 +170,63 @@ export function NoteDialog({ open, onOpenChange, note }: NoteDialogProps) {
                 </FormItem>
               )}
             />
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button 
-                type="button" 
-                variant="ghost" 
-                onClick={() => onOpenChange(false)}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading} className="min-w-[100px]">
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isEdit ? "Updating..." : "Saving..."}
-                  </>
-                ) : (
-                  isEdit ? "Update Note" : "Save Note"
-                )}
-              </Button>
+            <DialogFooter className="flex justify-between sm:justify-between">
+              {/* Delete button - only show in edit mode */}
+              {isEdit ? (
+                <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={loading}
+                    className="gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your
+                        note and remove it from AI indexing.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete Note
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <div /> // Spacer for layout
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => onOpenChange(false)}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading} className="min-w-[100px]">
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {isEdit ? "Updating..." : "Saving..."}
+                    </>
+                  ) : (
+                    isEdit ? "Update Note" : "Save Note"
+                  )}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>
