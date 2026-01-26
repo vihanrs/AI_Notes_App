@@ -1,10 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,16 +16,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
     Form,
     FormControl,
     FormField,
@@ -35,6 +25,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 
 import { Note } from "@/lib/db";
 
@@ -71,8 +62,6 @@ export function NoteDialog({
   isUpdating,
   isDeleting,
 }: NoteDialogProps) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
   const form = useForm<z.infer<typeof noteFormSchema>>({
     resolver: zodResolver(noteFormSchema),
     defaultValues: {
@@ -173,36 +162,10 @@ export function NoteDialog({
             <DialogFooter className="flex justify-between sm:justify-between">
               {/* Delete button - only show in edit mode */}
               {isEdit ? (
-                <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={loading}
-                    className="gap-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </Button>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your
-                        note and remove it from AI indexing.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDelete}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Delete Note
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <DeleteConfirmDialog
+                  onConfirm={handleDelete}
+                  disabled={loading}
+                />
               ) : (
                 <div /> // Spacer for layout
               )}

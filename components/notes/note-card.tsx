@@ -2,22 +2,9 @@
 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
-import { Trash2, Loader2, Clock } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Clock } from "lucide-react";
 import { Note } from "@/lib/db";
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 
 interface NoteCardProps {
   note: Note;
@@ -27,65 +14,25 @@ interface NoteCardProps {
 }
 
 export function NoteCard({ note, onClick, onDelete, isDeleting = false }: NoteCardProps) {
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
-  function handleDelete() {
-    if (onDelete) {
-      onDelete(note.id);
-      setShowDeleteDialog(false);
-    }
-  }
-
   return (
-    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-      <Card 
-        className="group cursor-pointer hover:shadow-xl transition-all duration-300 border-primary/5 hover:border-primary/20 bg-background/50 backdrop-blur-sm overflow-hidden flex flex-col h-full"
-        onClick={onClick}
-      >
-        <CardHeader className="pb-2">
-          <div className="flex justify-between items-start gap-2">
-            <CardTitle className="text-lg font-bold line-clamp-1 group-hover:text-primary transition-colors">
-              {note.title}
-            </CardTitle>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-2 shrink-0 transition-colors"
-                onClick={(e) => e.stopPropagation()}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <Loader2 size={16} className="animate-spin text-destructive" />
-                ) : (
-                  <Trash2 size={16} className="group-hover:text-destructive" />
-                )}
-              </Button>
-            </AlertDialogTrigger>
-          </div>
-        </CardHeader>
-
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete your
-              note and remove it from our AI indexing.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDelete();
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? "Deleting..." : "Delete Note"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+    <Card
+      className="group cursor-pointer hover:shadow-xl transition-all duration-300 border-primary/5 hover:border-primary/20 bg-background/50 backdrop-blur-sm overflow-hidden flex flex-col h-full"
+      onClick={onClick}
+    >
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start gap-2">
+          <CardTitle className="text-lg font-bold line-clamp-1 group-hover:text-primary transition-colors">
+            {note.title}
+          </CardTitle>
+          {onDelete && (
+            <DeleteConfirmDialog
+              variant="icon"
+              onConfirm={() => onDelete(note.id)}
+              isLoading={isDeleting}
+            />
+          )}
+        </div>
+      </CardHeader>
       <CardContent className="flex-grow">
         <p className="text-muted-foreground text-sm line-clamp-4 leading-relaxed">
           {note.body}
@@ -102,7 +49,6 @@ export function NoteCard({ note, onClick, onDelete, isDeleting = false }: NoteCa
           </div>
         )}
       </CardFooter>
-      </Card>
-    </AlertDialog>
+    </Card>
   );
 }
