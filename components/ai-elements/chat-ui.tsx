@@ -122,6 +122,7 @@ export function ChatInput({ value, onChange, onSubmit, isLoading, placeholder }:
       className="relative flex items-end gap-2 bg-muted/30 border border-primary/10 rounded-2xl p-2 focus-within:border-primary/30 transition-colors shadow-inner"
     >
       <textarea
+        id="chat-input"
         ref={textareaRef}
         rows={1}
         value={value}

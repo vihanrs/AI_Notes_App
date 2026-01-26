@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@xmcp/*": [
+        "./.xmcp/*"
       ]
     }
   },
@@ -34,7 +37,8 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    "**/*.mts",
+    "xmcp-env.d.ts"
   ],
   "exclude": [
     "node_modules"

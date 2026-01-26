@@ -12,6 +12,11 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { generateEmbedding } from "@/lib/embeddings";
 
+// Import xmcp tools
+import createNoteTool, { schema as createNoteSchema } from "@/tools/create-note";
+import updateNoteTool, { schema as updateNoteSchema } from "@/tools/update-note";
+import deleteNoteTool, { schema as deleteNoteSchema } from "@/tools/delete-note";
+
 // Type for the search_notes RPC function response
 // This matches the structure returned by the Supabase SQL function
 interface SearchNoteResult {
@@ -76,6 +81,21 @@ const tools = {
             }
         },
     }),
+    create_note: tool({
+        description: "Create a new note for the user.",
+        inputSchema: z.object(createNoteSchema),
+        execute: async (args: z.infer<z.ZodObject<typeof createNoteSchema>>) => createNoteTool(args),
+    }),
+    update_note: tool({
+        description: "Update an existing note's title or content.",
+        inputSchema: z.object(updateNoteSchema),
+        execute: async (args: z.infer<z.ZodObject<typeof updateNoteSchema>>) => updateNoteTool(args),
+    }),
+    delete_note: tool({
+        description: "Delete a note permanently. Always ask for confirmation before calling this.",
+        inputSchema: z.object(deleteNoteSchema),
+        execute: async (args: z.infer<z.ZodObject<typeof deleteNoteSchema>>) => deleteNoteTool(args),
+    }),
 };
 
 export type ChatTools = InferUITools<typeof tools>;
@@ -99,9 +119,14 @@ export async function POST(req: Request) {
             system: `You are SmartNotes AI, a specialized assistant for the SmartNotes application. Your sole purpose is to help users manage, search, and understand their own notes.
                         STRICT BEHAVIOR RULES:
                         1. GREETINGS: For simple greetings (e.g., "Hello", "How are you?"), respond warmly and professionally WITHOUT using any tools.
-                        2. NOTES-RELATED QUERIES: For any question about the user's content, summaries, or finding information, you MUST use the 'search_notes' tool first.
-                        3. RESTRICTED TOPICS: If a user asks general knowledge questions, current events, or anything unrelated to their notes or this application, politely explain that you are specialized ONLY in assisting with their notes and cannot answer general questions.
-                        4. LINKING: When you refer to a specific note found in the search results, ALWAYS provide a link using the format: [See Note](/note-viewer/ID) where ID is the EXACT UUID provided in the search results.
+                        2. SEARCHING: For any question about finding info or finding specific notes, use 'search_notes'.
+                        3. NOTE IDENTIFICATION:
+                           - When a user asks to update or delete a note, search your conversation history for the most recent 'note_id' or 'id' returned by a tool (like 'search_notes').
+                           - If a unique ID exists in the history, use it for 'update_note' or 'delete_note'.
+                           - If NO ID exists in the context, DO NOT guess. Instead, ask the user: "Which note would you like me to [update/delete]?" or suggest searching for it first.
+                           - If multiple notes were recently found and it's unclear which one the user means, list them and ask for clarification: "I found multiple notes (A, B, C). Which one should I [update/delete]?"
+                        4. DELETION: ALWAYS ask the user "Are you sure you want to delete '[Note Title]'?" before calling the 'delete_note' tool.
+                        5. LINKING: When you refer to a specific note, ALWAYS provide a link: [See Note](/note-viewer/ID) where ID is the UUID.
                     Maintain a professional, helpful, and concise tone at all times.`,
             messages: convertToModelMessages(messages),
             tools,

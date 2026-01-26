@@ -4,6 +4,7 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { createNoteAction, updateNoteAction, deleteNoteAction } from "@/app/actions/notes";
 import { Note } from "@/lib/db";
 import { toast } from "sonner";
+import { useEffect } from "react";
 
 // Query key for notes - used to identify the cache
 export const NOTES_QUERY_KEY = ["notes"] as const;
@@ -17,13 +18,18 @@ export function useNotes(initialNotes: Note[]) {
     const queryClient = useQueryClient();
 
     // Use useQuery to make notes reactive - this will re-render when cache changes
-    // We use initialData from server and never refetch (data only changes via mutations)
     const { data: notes = initialNotes } = useQuery({
         queryKey: NOTES_QUERY_KEY,
-        queryFn: () => initialNotes, // Never actually called due to staleTime
+        queryFn: () => initialNotes,
         initialData: initialNotes,
-        staleTime: Infinity, // Never consider stale - we manage updates via mutations
+        staleTime: Infinity,
     });
+
+    // 🔄 SYNC: When initialNotes changes from the server (after router.refresh), 
+    // update the React Query cache so the UI reflects the server state.
+    useEffect(() => {
+        queryClient.setQueryData(NOTES_QUERY_KEY, initialNotes);
+    }, [initialNotes, queryClient]);
 
     // ============ CREATE NOTE MUTATION ============
     const createMutation = useMutation({
