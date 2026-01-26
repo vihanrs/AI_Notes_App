@@ -5,7 +5,7 @@ import { User, Bot, Copy, Check, BrainCircuit, X, Send, Loader2 } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Markdown from "@/components/markdown";
-import { toast } from "sonner";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 
 // --- CHAT MESSAGE ---
 interface ChatMessageProps {
@@ -16,17 +16,14 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ role, content, isStreaming, onNoteClick }: ChatMessageProps) {
-  const [copied, setCopied] = React.useState(false);
+  const { copy, copied } = useCopyToClipboard();
 
   const handleNoteLinkClick = (id: string) => {
     if (onNoteClick) onNoteClick(id);
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(content);
-    setCopied(true);
-    toast.success("Copied to clipboard");
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = () => {
+    copy(content);
   };
 
   return (
@@ -71,7 +68,7 @@ export function ChatMessage({ role, content, isStreaming, onNoteClick }: ChatMes
         {/* Footer Actions (Copy, etc.) - Only for Assistant */}
         {role === "assistant" && !isStreaming && content && (
           <button 
-            onClick={copyToClipboard}
+            onClick={handleCopy}
             className="flex items-center gap-1.5 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary mt-1"
           >
             {copied ? <Check size={10} /> : <Copy size={10} />}
