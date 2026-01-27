@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { BrainCircuit, Sparkles, Shield, ArrowRight, Github } from "lucide-react";
+import { BrainCircuit, Sparkles, Shield, ArrowRight } from "lucide-react";
 import { DemoButton } from "@/components/demo-button";
 
 export default function LandingPage() {
@@ -128,17 +128,6 @@ export default function LandingPage() {
               <span className="font-bold">SmartNotes</span>
             </div>
             <p className="text-sm text-muted-foreground text-center md:text-left">© {new Date().getFullYear()} SmartNotes Inc. All rights reserved.</p>
-          </div>
-          <div className="flex gap-4 sm:gap-6">
-            <Link className="text-xs hover:underline underline-offset-4 text-muted-foreground hover:text-foreground" href="#">
-              Terms of Service
-            </Link>
-            <Link className="text-xs hover:underline underline-offset-4 text-muted-foreground hover:text-foreground" href="#">
-              Privacy
-            </Link>
-            <Link className="text-xs hover:underline underline-offset-4 text-muted-foreground hover:text-foreground" href="#">
-              <Github size={16} />
-            </Link>
           </div>
         </div>
       </footer>
