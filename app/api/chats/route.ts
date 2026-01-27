@@ -53,8 +53,8 @@ const tools = {
                 // - filter_user_id: Ensures we only search the current user's notes
                 const { data: notes, error: searchError } = await supabase.rpc('search_notes', {
                     query_embedding: queryEmbedding,
-                    match_threshold: 0.3,
-                    match_count: 5,
+                    match_threshold: AI_CONFIG.search.matchThreshold,
+                    match_count: AI_CONFIG.search.matchCount,
                     filter_user_id: user.id
                 });
 

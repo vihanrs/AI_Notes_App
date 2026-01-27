@@ -36,6 +36,10 @@ export const AI_CONFIG = {
     activeVersion: "2026-01-27-02" as PromptVersion,
     model: openai("gpt-4o-mini"),
     maxSteps: 5,
+    search: {
+        matchCount: 5,
+        matchThreshold: 0.3,
+    },
     get systemPrompt() {
         return PROMPT_VERSIONS[this.activeVersion];
     },
