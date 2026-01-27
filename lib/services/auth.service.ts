@@ -27,13 +27,11 @@ export async function getAuthenticatedUser(): Promise<User> {
  */
 export async function getMcpAuthenticatedUser(): Promise<User> {
     // 1. Try traditional session (Next.js context / Server Actions)
-    // This is useful when tools are called directly from the app (e.g. Chat API)
+    // This reuses the standard auth function for internal calls
     try {
-        const supabase = await createClient();
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (user && !error) return user;
+        return await getAuthenticatedUser();
     } catch (e) {
-        // Fallback to headers
+        // Fallback to MCP bearer token if session auth fails
     }
 
     // 2. Try MCP Bearer token from xmcp headers

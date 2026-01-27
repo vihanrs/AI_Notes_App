@@ -121,6 +121,59 @@ export async function getNote({ noteId, userId }: GetNoteInput): Promise<Note | 
 }
 
 /**
+ * Search notes using semantic similarity
+ */
+export type SearchNoteInput = {
+    query: string;
+    userId: string;
+    matchThreshold?: number;
+    matchCount?: number;
+};
+
+export type SearchNoteResult = {
+    note_id: string;
+    title: string;
+    body: string;
+    chunk_content: string;
+    similarity: number;
+};
+
+export async function searchNotes({
+    query,
+    userId,
+    matchThreshold = 0.1,
+    matchCount = 5,
+}: SearchNoteInput): Promise<SearchNoteResult[]> {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { generateEmbedding } = await import("@/lib/embeddings");
+
+    const supabase = await createClient();
+
+    // Generate embedding for the search query
+    const queryEmbedding = await generateEmbedding(query);
+
+    // Call the Supabase RPC function for vector similarity search
+    // - query_embedding: The vector representation of the user's search query
+    // - match_threshold: Minimum similarity score (0-1). Lower = more results but less relevant.
+    //                    0.1 is lenient for testing; production might use 0.5-0.7
+    // - match_count: Maximum number of results to return
+    // - filter_user_id: Ensures we only search the current user's notes
+    const { data: notes, error: searchError } = await supabase.rpc('search_notes', {
+        query_embedding: queryEmbedding,
+        match_threshold: matchThreshold,
+        match_count: matchCount,
+        filter_user_id: userId
+    });
+
+    if (searchError) {
+        console.error("Supabase search error:", searchError);
+        throw new Error(`Database error: ${searchError.message}`);
+    }
+
+    return notes || [];
+}
+
+/**
  * Helper to generate embeddings for note content
  */
 async function generateNoteEmbeddings(title: string, body: string) {
