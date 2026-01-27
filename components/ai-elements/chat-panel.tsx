@@ -58,7 +58,7 @@ export function ChatPanel({ open, onClose, onNoteLinkClick }: ChatPanelProps) {
     // Check specifically for TOOL RESULTS (output-available)
     lastMessage.parts.forEach(part => {
         if (part.type.startsWith('tool-') && 'state' in part && part.state === 'output-available' && part.output) {
-            const toolName = part.type.replace('tool-', '');
+            const toolName = part.type.replace('tool-', '').replace(/-/g, '_');
             const result = part.output as any;
 
             if (result.success) {
@@ -172,12 +172,12 @@ export function ChatPanel({ open, onClose, onNoteLinkClick }: ChatPanelProps) {
                 {/* Tool Calls for this message using switch/case pattern from learnings */}
                 {m.parts.map((part, pIndex) => {
                   switch (part.type) {
-                    case 'tool-search_notes':
-                    case 'tool-create_note':
-                    case 'tool-update_note':
-                    case 'tool-delete_note':
+                    case 'tool-search-notes':
+                    case 'tool-create-note':
+                    case 'tool-update-note':
+                    case 'tool-delete-note':
                       {
-                        const toolName = part.type.replace('tool-', '');
+                        const toolName = part.type.replace('tool-', '').replace(/-/g, '_');
                         const toolLabel = toolName.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
                         const Icon = toolName === 'search_notes' ? Search : 
                                      toolName === 'create_note' ? CheckCircle2 :
