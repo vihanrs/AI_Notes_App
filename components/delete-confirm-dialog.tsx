@@ -60,10 +60,10 @@ export function DeleteConfirmDialog({
       ) : (
         <Button
           type="button"
-          variant="destructive"
+          variant="outline"
           onClick={() => setOpen(true)}
           disabled={disabled || isLoading}
-          className="gap-2"
+          className="gap-2 text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive transition-colors"
         >
           <Trash2 className="h-4 w-4" />
           Delete
@@ -81,7 +81,7 @@ export function DeleteConfirmDialog({
               e.stopPropagation();
               handleConfirm();
             }}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="bg-transparent border border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive shadow-none transition-colors"
           >
             {isLoading ? "Deleting..." : "Delete"}
           </AlertDialogAction>

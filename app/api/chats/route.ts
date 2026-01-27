@@ -7,7 +7,7 @@ import {
     stepCountIs,
     InferUITools,
 } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { AI_CONFIG } from "@/lib/ai/config";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { generateEmbedding } from "@/lib/embeddings";
@@ -16,6 +16,8 @@ import { generateEmbedding } from "@/lib/embeddings";
 import createNoteTool, { schema as createNoteSchema } from "@/tools/create-note";
 import updateNoteTool, { schema as updateNoteSchema } from "@/tools/update-note";
 import deleteNoteTool, { schema as deleteNoteSchema } from "@/tools/delete-note";
+
+
 
 // Type for the search_notes RPC function response
 // This matches the structure returned by the Supabase SQL function
@@ -82,7 +84,7 @@ const tools = {
         },
     }),
     create_note: tool({
-        description: "Create a new note for the user.",
+        description: "Create a new note for the user. Use this when the user asks to create, add, save, or remember a new note.",
         inputSchema: z.object(createNoteSchema),
         execute: async (args: z.infer<z.ZodObject<typeof createNoteSchema>>) => createNoteTool(args),
     }),
@@ -115,22 +117,11 @@ export async function POST(req: Request) {
         const { messages }: { messages: ChatMessage[] } = await req.json();
 
         const result = streamText({
-            model: openai("gpt-4o-mini"),
-            system: `You are SmartNotes AI, a specialized assistant for the SmartNotes application. Your sole purpose is to help users manage, search, and understand their own notes.
-                        STRICT BEHAVIOR RULES:
-                        1. GREETINGS: For simple greetings (e.g., "Hello", "How are you?"), respond warmly and professionally WITHOUT using any tools.
-                        2. SEARCHING: For any question about finding info or finding specific notes, use 'search_notes'.
-                        3. NOTE IDENTIFICATION:
-                           - When a user asks to update or delete a note, search your conversation history for the most recent 'note_id' or 'id' returned by a tool (like 'search_notes').
-                           - If a unique ID exists in the history, use it for 'update_note' or 'delete_note'.
-                           - If NO ID exists in the context, DO NOT guess. Instead, ask the user: "Which note would you like me to [update/delete]?" or suggest searching for it first.
-                           - If multiple notes were recently found and it's unclear which one the user means, list them and ask for clarification: "I found multiple notes (A, B, C). Which one should I [update/delete]?"
-                        4. DELETION: ALWAYS ask the user "Are you sure you want to delete '[Note Title]'?" before calling the 'delete_note' tool.
-                        5. LINKING: When you refer to a specific note, ALWAYS provide a link: [See Note](/note-viewer/ID) where ID is the UUID.
-                    Maintain a professional, helpful, and concise tone at all times.`,
+            model: AI_CONFIG.model,
+            system: AI_CONFIG.systemPrompt,
             messages: convertToModelMessages(messages),
             tools,
-            stopWhen: stepCountIs(2), //one search, one response creation
+            stopWhen: stepCountIs(AI_CONFIG.maxSteps),
         });
         /*
         messages: convertToModelMessages(messages)
