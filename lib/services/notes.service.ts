@@ -1,5 +1,5 @@
 import { db, notes, noteEmbeddings, Note } from "@/lib/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { generateEmbeddings } from "@/lib/embeddings";
 
 /**
@@ -7,6 +7,7 @@ import { generateEmbeddings } from "@/lib/embeddings";
  * Used by both Server Actions and MCP Tools
  */
 
+// Literal types for note sources
 export type NoteSource = "local" | "ai" | "notion" | "google";
 
 export type CreateNoteInput = {
@@ -26,11 +27,6 @@ export type UpdateNoteInput = {
 export type DeleteNoteInput = {
     noteId: string;
     userId: string;
-};
-
-export type ListNotesInput = {
-    userId: string;
-    limit?: number;
 };
 
 export type GetNoteInput = {
@@ -122,20 +118,6 @@ export async function getNote({ noteId, userId }: GetNoteInput): Promise<Note | 
         .limit(1);
 
     return note || null;
-}
-
-/**
- * List all notes for a user
- */
-export async function listNotes({ userId, limit = 50 }: ListNotesInput): Promise<Note[]> {
-    const userNotes = await db
-        .select()
-        .from(notes)
-        .where(eq(notes.userId, userId))
-        .orderBy(desc(notes.createdAt))
-        .limit(limit);
-
-    return userNotes;
 }
 
 /**

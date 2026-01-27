@@ -3,6 +3,7 @@ import { type InferSchema, type ToolMetadata } from "xmcp";
 import { getMcpAuthenticatedUser } from "@/lib/services/auth.service";
 import * as notesService from "@/lib/services/notes.service";
 import { revalidatePath } from "next/cache";
+import { ActionResult } from "@/lib/types";
 
 export const schema = {
     noteId: z.string().describe("The ID of the note to delete"),
@@ -23,7 +24,7 @@ export const metadata: ToolMetadata = {
 
 export default async function deleteNote({
     noteId,
-}: InferSchema<typeof schema>) {
+}: InferSchema<typeof schema>): Promise<ActionResult<{ noteId: string }>> {
     try {
         const user = await getMcpAuthenticatedUser();
 
@@ -50,6 +51,7 @@ export default async function deleteNote({
         return {
             success: true,
             message: `Note "${note.title}" deleted successfully!`,
+            noteId,
         };
     } catch (error) {
         console.error("Failed to delete note via MCP:", error);

@@ -3,6 +3,8 @@ import { type InferSchema, type ToolMetadata } from "xmcp";
 import { getMcpAuthenticatedUser } from "@/lib/services/auth.service";
 import * as notesService from "@/lib/services/notes.service";
 import { revalidatePath } from "next/cache";
+import { ActionResult } from "@/lib/types";
+import { type Note } from "@/lib/db";
 
 export const schema = {
     title: z.string().describe("The title of the note to create"),
@@ -25,7 +27,7 @@ export const metadata: ToolMetadata = {
 export default async function createNote({
     title,
     body,
-}: InferSchema<typeof schema>) {
+}: InferSchema<typeof schema>): Promise<ActionResult<{ note: Note }>> {
     const debugInfo: string[] = [];
     debugInfo.push(`Tool called with title: "${title}", body length: ${body?.length}`);
 
@@ -49,14 +51,7 @@ export default async function createNote({
         return {
             success: true,
             message: `Note "${title}" created successfully!`,
-            note: {
-                id: note.id,
-                title: note.title,
-                body: note.body,
-                createdAt: note.createdAt,
-                userId: note.userId,
-                source: note.source,
-            },
+            note: note, // We return the whole note object now
         };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);

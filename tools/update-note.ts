@@ -3,6 +3,7 @@ import { type InferSchema, type ToolMetadata } from "xmcp";
 import { getMcpAuthenticatedUser } from "@/lib/services/auth.service";
 import * as notesService from "@/lib/services/notes.service";
 import { revalidatePath } from "next/cache";
+import { ActionResult } from "@/lib/types";
 
 export const schema = {
     noteId: z.string().describe("The ID of the note to update"),
@@ -27,7 +28,7 @@ export default async function updateNote({
     noteId,
     title,
     body,
-}: InferSchema<typeof schema>) {
+}: InferSchema<typeof schema>): Promise<ActionResult<{ noteId: string }>> {
     try {
         const user = await getMcpAuthenticatedUser();
 
