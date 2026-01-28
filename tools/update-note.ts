@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type InferSchema, type ToolMetadata } from "xmcp";
-import { getMcpAuthenticatedUser } from "@/lib/services/auth.service";
+import { getMcpAuthenticatedUser, requireToolPermission } from "@/lib/services/auth.service";
 import * as notesService from "@/lib/services/notes.service";
 import { revalidatePath } from "next/cache";
 import { ActionResult } from "@/lib/types";
@@ -30,7 +30,9 @@ export default async function updateNote({
     body,
 }: InferSchema<typeof schema>): Promise<ActionResult<{ noteId: string }>> {
     try {
-        const user = await getMcpAuthenticatedUser();
+        const authContext = await getMcpAuthenticatedUser();
+        requireToolPermission(authContext, "update-note");
+        const { user } = authContext;
 
         await notesService.updateNote({
             noteId,

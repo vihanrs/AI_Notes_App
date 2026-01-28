@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type InferSchema, type ToolMetadata } from "xmcp";
-import { getMcpAuthenticatedUser } from "@/lib/services/auth.service";
+import { getMcpAuthenticatedUser, requireToolPermission } from "@/lib/services/auth.service";
 import * as notesService from "@/lib/services/notes.service";
 import { revalidatePath } from "next/cache";
 import { ActionResult } from "@/lib/types";
@@ -33,7 +33,10 @@ export default async function createNote({
 
     try {
         debugInfo.push("Getting authenticated user...");
-        const user = await getMcpAuthenticatedUser();
+        const authContext = await getMcpAuthenticatedUser();
+        requireToolPermission(authContext, "create-note");
+        const { user } = authContext;
+
         debugInfo.push(`User obtained: ${user.id}`);
 
         debugInfo.push("Creating note...");

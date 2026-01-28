@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type InferSchema, type ToolMetadata } from "xmcp";
-import { getMcpAuthenticatedUser } from "@/lib/services/auth.service";
+import { getMcpAuthenticatedUser, requireToolPermission } from "@/lib/services/auth.service";
 import * as notesService from "@/lib/services/notes.service";
 import { ActionResult } from "@/lib/types";
 import { AI_CONFIG } from "@/lib/ai/config";
@@ -33,7 +33,9 @@ export default async function searchNotes({
     query,
 }: InferSchema<typeof schema>): Promise<ActionResult<{ notes: SearchResult[] }>> {
     try {
-        const user = await getMcpAuthenticatedUser();
+        const authContext = await getMcpAuthenticatedUser();
+        requireToolPermission(authContext, "search-notes");
+        const { user } = authContext;
 
         const results = await notesService.searchNotes({
             query,
