@@ -96,16 +96,10 @@ async function validateApiKey(apiKey: string): Promise<AuthenticatedContext | nu
             .execute()
             .catch(() => { }); // Ignore errors
 
-        // Get the user associated with this API key
-        const supabase = await createClient();
-        const { data: { user }, error } = await supabase.auth.admin.getUserById(apiKeyRecord.userId);
-
-        if (!user || error) {
-            return null;
-        }
-
+        // Tools only need user.id — construct minimal user object from the API key record
+        // This avoids needing the Supabase service role key for admin.getUserById
         return {
-            user,
+            user: { id: apiKeyRecord.userId } as User,
             scopes: apiKeyRecord.scopes,
         };
     } catch (error) {
