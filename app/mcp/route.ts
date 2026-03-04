@@ -1,29 +1,39 @@
 import { xmcpHandler, withAuth, type VerifyToken } from "@xmcp/adapter";
-import { createClient } from "@/lib/supabase/server";
+import { db, apiKeys } from "@/lib/db";
+import { eq } from "drizzle-orm";
+import crypto from "crypto";
 
 const verifyToken: VerifyToken = async (req: Request, bearerToken?: string) => {
     if (!bearerToken) return undefined;
 
     try {
-        const supabase = await createClient();
-        const { data: { user }, error } = await supabase.auth.getUser(bearerToken);
+        const keyHash = crypto.createHash("sha256").update(bearerToken).digest("hex");
 
-        if (error || !user) {
-            console.error("MCP Auth Error:", error?.message);
-            return undefined;
-        }
+        const [apiKeyRecord] = await db
+            .select()
+            .from(apiKeys)
+            .where(eq(apiKeys.keyHash, keyHash))
+            .limit(1);
+
+        if (!apiKeyRecord) return undefined;
+
+        // Update last used timestamp (fire and forget)
+        db.update(apiKeys)
+            .set({ lastUsedAt: new Date() })
+            .where(eq(apiKeys.id, apiKeyRecord.id))
+            .execute()
+            .catch(() => {});
 
         return {
             token: bearerToken,
-            clientId: "nextjs-chat",
-            scopes: [],
+            clientId: apiKeyRecord.id,
+            scopes: apiKeyRecord.scopes,
             extra: {
-                userId: user.id,
-                email: user.email,
+                userId: apiKeyRecord.userId,
             },
         };
     } catch (err) {
-        console.error("MCP Auth Crash:", err);
+        console.error("MCP Auth Error:", err);
         return undefined;
     }
 };
