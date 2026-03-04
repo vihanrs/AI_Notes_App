@@ -1,18 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { User } from "@supabase/supabase-js";
-import { headers as xmcpHeaders } from "xmcp/dist/runtime/headers";
-import { db, apiKeys } from "@/lib/db";
-import { eq } from "drizzle-orm";
 import { hasToolPermission } from "@/lib/permissions";
-import crypto from "crypto";
 
-/**
- * Extended user context with optional API key scopes
- */
-export type AuthenticatedContext = {
-    user: User;
-    scopes?: string[]; // Present if authenticated via API key
-};
 
 /**
  * Get the authenticated user from the current session
@@ -34,79 +23,20 @@ export async function getAuthenticatedUser(): Promise<User> {
 }
 
 /**
- * Get the authenticated user specifically for MCP tools
- * Checks: Session → Custom API Key
- * Returns user context with optional scopes for permission checking
+ * Resolve the user for xmcp tool handlers — works for both paths:
+ * - MCP path: reads userId from authInfo.extra (set by withAuth in route.ts)
+ * - Chatbot path: falls back to Supabase session when authInfo is absent
  */
-export async function getMcpAuthenticatedUser(): Promise<AuthenticatedContext> {
-    // 1. Try traditional session (Next.js context / Server Actions)
-    // This reuses the standard auth function for internal calls
-    try {
-        const user = await getAuthenticatedUser();
-        return { user }; // No scopes = full access (internal call)
-    } catch (e) {
-        // Fallback to API key authentication
+export async function resolveToolUser(
+    authInfo?: { scopes: string[]; extra?: Record<string, unknown> }
+): Promise<{ userId: string; scopes?: string[] }> {
+    if (authInfo?.extra?.userId) {
+        return { userId: authInfo.extra.userId as string, scopes: authInfo.scopes };
     }
-
-    // 2. Try custom API key from xmcp headers
-    // This is used when tools are called via the /mcp endpoint by an external agent
-    try {
-        const h = xmcpHeaders();
-        const authHeaderValue = h["authorization"];
-
-        if (authHeaderValue && authHeaderValue.startsWith("Bearer ")) {
-            const token = authHeaderValue.split(" ")[1];
-
-            // Validate custom API key
-            const apiKeyContext = await validateApiKey(token);
-            if (apiKeyContext) {
-                return apiKeyContext;
-            }
-        }
-    } catch (e) {
-        // This might error if xmcp headers are not available
-    }
-
-    throw new Error("Unauthorized: Please provide a valid API key.");
+    const user = await getAuthenticatedUser();
+    return { userId: user.id };
 }
 
-/**
- * Validate a custom API key and return the user context with scopes
- */
-async function validateApiKey(apiKey: string): Promise<AuthenticatedContext | null> {
-    try {
-        // Hash the provided key to compare with stored hash
-        const keyHash = crypto.createHash("sha256").update(apiKey).digest("hex");
-
-        // Look up the API key in the database
-        const [apiKeyRecord] = await db
-            .select()
-            .from(apiKeys)
-            .where(eq(apiKeys.keyHash, keyHash))
-            .limit(1);
-
-        if (!apiKeyRecord) {
-            return null;
-        }
-
-        // Update last used timestamp (fire and forget)
-        db.update(apiKeys)
-            .set({ lastUsedAt: new Date() })
-            .where(eq(apiKeys.id, apiKeyRecord.id))
-            .execute()
-            .catch(() => { }); // Ignore errors
-
-        // Tools only need user.id — construct minimal user object from the API key record
-        // This avoids needing the Supabase service role key for admin.getUserById
-        return {
-            user: { id: apiKeyRecord.userId } as User,
-            scopes: apiKeyRecord.scopes,
-        };
-    } catch (error) {
-        console.error("API key validation error:", error);
-        return null;
-    }
-}
 
 /**
  * Check if the current context has permission to use a specific tool

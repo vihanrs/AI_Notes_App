@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type InferSchema, type ToolMetadata, type ToolExtraArguments } from "xmcp";
-import { requireToolPermission } from "@/lib/services/auth.service";
+import { resolveToolUser, requireToolPermission } from "@/lib/services/auth.service";
 import * as notesService from "@/lib/services/notes.service";
 import { ActionResult } from "@/lib/types";
 import { AI_CONFIG } from "@/lib/ai/config";
@@ -34,12 +34,8 @@ export default async function searchNotes(
     { authInfo }: ToolExtraArguments
 ): Promise<ActionResult<{ notes: SearchResult[] }>> {
     try {
-        if (!authInfo?.extra?.userId) {
-            return { success: false, error: "Unauthorized: Please provide a valid API key." };
-        }
-
-        requireToolPermission({ scopes: authInfo.scopes }, "search-notes");
-        const userId = authInfo.extra.userId as string;
+        const { userId, scopes } = await resolveToolUser(authInfo);
+        requireToolPermission({ scopes }, "search-notes");
 
         const results = await notesService.searchNotes({
             query,

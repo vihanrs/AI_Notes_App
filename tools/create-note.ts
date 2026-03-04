@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type InferSchema, type ToolMetadata, type ToolExtraArguments } from "xmcp";
-import { requireToolPermission } from "@/lib/services/auth.service";
+import { resolveToolUser, requireToolPermission } from "@/lib/services/auth.service";
 import * as notesService from "@/lib/services/notes.service";
 import { revalidatePath } from "next/cache";
 import { ActionResult } from "@/lib/types";
@@ -29,12 +29,8 @@ export default async function createNote(
     { authInfo }: ToolExtraArguments
 ): Promise<ActionResult<{ note: Note }>> {
     try {
-        if (!authInfo?.extra?.userId) {
-            return { success: false, error: "Unauthorized: Please provide a valid API key." };
-        }
-
-        requireToolPermission({ scopes: authInfo.scopes }, "create-note");
-        const userId = authInfo.extra.userId as string;
+        const { userId, scopes } = await resolveToolUser(authInfo);
+        requireToolPermission({ scopes }, "create-note");
 
         const note = await notesService.createNote({
             title,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type InferSchema, type ToolMetadata, type ToolExtraArguments } from "xmcp";
-import { requireToolPermission } from "@/lib/services/auth.service";
+import { resolveToolUser, requireToolPermission } from "@/lib/services/auth.service";
 import * as notesService from "@/lib/services/notes.service";
 import { revalidatePath } from "next/cache";
 import { ActionResult } from "@/lib/types";
@@ -27,12 +27,8 @@ export default async function deleteNote(
     { authInfo }: ToolExtraArguments
 ): Promise<ActionResult<{ noteId: string }>> {
     try {
-        if (!authInfo?.extra?.userId) {
-            return { success: false, error: "Unauthorized: Please provide a valid API key." };
-        }
-
-        requireToolPermission({ scopes: authInfo.scopes }, "delete-note");
-        const userId = authInfo.extra.userId as string;
+        const { userId, scopes } = await resolveToolUser(authInfo);
+        requireToolPermission({ scopes }, "delete-note");
 
         // Get the note first to return its title in the response
         const note = await notesService.getNote({
