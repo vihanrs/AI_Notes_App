@@ -112,7 +112,7 @@ async function validateApiKey(apiKey: string): Promise<AuthenticatedContext | nu
  * Check if the current context has permission to use a specific tool
  * @throws Error if permission is denied
  */
-export function requireToolPermission(context: AuthenticatedContext, toolName: string): void {
+export function requireToolPermission(context: { scopes?: string[] }, toolName: string): void {
     // If no scopes are present, it's an internal call with full access
     if (!context.scopes) {
         return;

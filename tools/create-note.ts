@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { type InferSchema, type ToolMetadata } from "xmcp";
-import { getMcpAuthenticatedUser, requireToolPermission } from "@/lib/services/auth.service";
+import { type InferSchema, type ToolMetadata, type ToolExtraArguments } from "xmcp";
+import { requireToolPermission } from "@/lib/services/auth.service";
 import * as notesService from "@/lib/services/notes.service";
 import { revalidatePath } from "next/cache";
 import { ActionResult } from "@/lib/types";
@@ -24,45 +24,37 @@ export const metadata: ToolMetadata = {
     },
 };
 
-export default async function createNote({
-    title,
-    body,
-}: InferSchema<typeof schema>): Promise<ActionResult<{ note: Note }>> {
-    const debugInfo: string[] = [];
-    debugInfo.push(`Tool called with title: "${title}", body length: ${body?.length}`);
-
+export default async function createNote(
+    { title, body }: InferSchema<typeof schema>,
+    { authInfo }: ToolExtraArguments
+): Promise<ActionResult<{ note: Note }>> {
     try {
-        debugInfo.push("Getting authenticated user...");
-        const authContext = await getMcpAuthenticatedUser();
-        requireToolPermission(authContext, "create-note");
-        const { user } = authContext;
+        if (!authInfo?.extra?.userId) {
+            return { success: false, error: "Unauthorized: Please provide a valid API key." };
+        }
 
-        debugInfo.push(`User obtained: ${user.id}`);
+        requireToolPermission({ scopes: authInfo.scopes }, "create-note");
+        const userId = authInfo.extra.userId as string;
 
-        debugInfo.push("Creating note...");
         const note = await notesService.createNote({
             title,
             body,
-            userId: user.id,
+            userId,
             source: "ai",
         });
-        debugInfo.push(`Note created: ${note.id}`);
 
-        // Revalidate for server-side cache
         revalidatePath("/notes");
 
         return {
             success: true,
             message: `Note "${title}" created successfully!`,
-            note: note, // We return the whole note object now
+            note,
         };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        debugInfo.push(`Error: ${errorMessage}`);
         return {
             success: false,
             error: `Failed to create note: ${errorMessage}`,
-            debug: debugInfo,
         };
     }
 }

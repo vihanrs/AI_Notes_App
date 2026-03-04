@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { type InferSchema, type ToolMetadata } from "xmcp";
-import { getMcpAuthenticatedUser, requireToolPermission } from "@/lib/services/auth.service";
+import { type InferSchema, type ToolMetadata, type ToolExtraArguments } from "xmcp";
+import { requireToolPermission } from "@/lib/services/auth.service";
 import * as notesService from "@/lib/services/notes.service";
 import { ActionResult } from "@/lib/types";
 import { AI_CONFIG } from "@/lib/ai/config";
@@ -29,17 +29,21 @@ export type SearchResult = {
     similarity: string;
 };
 
-export default async function searchNotes({
-    query,
-}: InferSchema<typeof schema>): Promise<ActionResult<{ notes: SearchResult[] }>> {
+export default async function searchNotes(
+    { query }: InferSchema<typeof schema>,
+    { authInfo }: ToolExtraArguments
+): Promise<ActionResult<{ notes: SearchResult[] }>> {
     try {
-        const authContext = await getMcpAuthenticatedUser();
-        requireToolPermission(authContext, "search-notes");
-        const { user } = authContext;
+        if (!authInfo?.extra?.userId) {
+            return { success: false, error: "Unauthorized: Please provide a valid API key." };
+        }
+
+        requireToolPermission({ scopes: authInfo.scopes }, "search-notes");
+        const userId = authInfo.extra.userId as string;
 
         const results = await notesService.searchNotes({
             query,
-            userId: user.id,
+            userId,
             matchThreshold: AI_CONFIG.search.matchThreshold,
             matchCount: AI_CONFIG.search.matchCount,
         });
